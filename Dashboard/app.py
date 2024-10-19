@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[2]:
+# In[1]:
 
 
 import numpy as np
@@ -102,6 +102,7 @@ def save_significant_changes_to_file(significant_changes, option_type):
 def main():
     st.title('Options Volatility Skew Dashboard')
     
+    # Sidebar for stock symbol and threshold input
     stock_symbol = st.sidebar.text_input("Stock Symbol", value="NIFTY")
     threshold = st.sidebar.slider("Significant Change Threshold (in %)", 1, 10, 5) / 100
     baseline_calls_filename = "baseline_calls_skew.csv"
@@ -111,36 +112,50 @@ def main():
     baseline_calls = load_baseline_skew(baseline_calls_filename)
     baseline_puts = load_baseline_skew(baseline_puts_filename)
     
-    # Fetch and display options data
-    st.write(f"Fetching options data for {stock_symbol}...")
-    calls, puts = fetch_options_data(stock_symbol)
+    # Tabs for different functionalities
+    tab1, tab2 = st.tabs(["Volatility Skew", "Significant Changes"])
 
-    if calls is not None and puts is not None:
-        calls_data = calculate_volatility_skew(calls)
-        puts_data = calculate_volatility_skew(puts)
+    # Tab for fetching and plotting volatility skew
+    with tab1:
+        st.write(f"Fetching options data for {stock_symbol}...")
+        calls, puts = fetch_options_data(stock_symbol)
 
-        # Plot skews
-        plot_volatility_skew(calls_data, 'Calls')
-        plot_volatility_skew(puts_data, 'Puts')
+        if calls is not None and puts is not None:
+            calls_data = calculate_volatility_skew(calls)
+            puts_data = calculate_volatility_skew(puts)
 
-        # Compare skews and display significant changes
+            # Plot skews
+            plot_volatility_skew(calls_data, 'Calls')
+            plot_volatility_skew(puts_data, 'Puts')
+
+            # Compare skews and display significant changes
+            if baseline_calls is not None and baseline_puts is not None:
+                st.subheader("Comparing Skews")
+                significant_call_changes = compare_skews(baseline_calls, calls_data, threshold)
+                significant_put_changes = compare_skews(baseline_puts, puts_data, threshold)
+
+                # Save significant changes to files
+                if significant_call_changes:
+                    save_significant_changes_to_file(significant_call_changes, 'Calls')
+                if significant_put_changes:
+                    save_significant_changes_to_file(significant_put_changes, 'Puts')
+
+            # Save the current skews as the new baseline
+            save_baseline_skew(calls_data, baseline_calls_filename)
+            save_baseline_skew(puts_data, baseline_puts_filename)
+        else:
+            st.write("No data available for the given stock symbol.")
+
+    # Tab for displaying significant changes
+    with tab2:
+        st.subheader("Significant Changes Alerts")
         if baseline_calls is not None and baseline_puts is not None:
-            st.subheader("Significant Changes")
             significant_call_changes = compare_skews(baseline_calls, calls_data, threshold)
             significant_put_changes = compare_skews(baseline_puts, puts_data, threshold)
-
             display_significant_changes(significant_call_changes, 'Calls')
             display_significant_changes(significant_put_changes, 'Puts')
-
-            # Save significant changes to files
-            if significant_call_changes:
-                save_significant_changes_to_file(significant_call_changes, 'Calls')
-            if significant_put_changes:
-                save_significant_changes_to_file(significant_put_changes, 'Puts')
-
-        # Save the current skews as the new baseline
-        save_baseline_skew(calls_data, baseline_calls_filename)
-        save_baseline_skew(puts_data, baseline_puts_filename)
+        else:
+            st.write("No baseline data available.")
 
 if __name__ == "__main__":
     main()
